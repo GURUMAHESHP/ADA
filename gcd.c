@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// step counters
+// Step counters for analysis
 int count1, count2, count3;
 
 // Euclid’s algorithm (division method)
@@ -46,77 +46,124 @@ int modified(int num1, int num2)
         else
             num2 = num2 - num1;
     }
-    count3++; // count the final step
+    count3++; // final step
     return num1;
 }
 
-int main()
+void run_tester()
 {
-    FILE *fp;
-    fp = fopen("gcd_data.dat", "w");
-    if (!fp)
+    int choice, m, n, gcd;
+
+    while (1)
     {
+        printf("\nGCD\n");
+        printf("1. Euclid\n");
+        printf("2. Modified Euclid\n");
+        printf("3. Consecutive Integer Method\n");
+        printf("0. Exit\n");
+        printf("Choice: ");
+        scanf("%d", &choice);
+
+        if (choice == 0) break;
+
+        printf("Enter the values M and N: ");
+        scanf("%d %d", &m, &n);
+
+        switch (choice)
+        {
+        case 1:
+            gcd = euclid(m, n);
+            printf("The GCD is %d\n", gcd);
+            break;
+        case 2:
+            gcd = modified(m, n);
+            printf("The GCD is %d\n", gcd);
+            break;
+        case 3:
+            gcd = cicm(m, n);
+            printf("The GCD is %d\n", gcd);
+            break;
+        default:
+            printf("Invalid choice!\n");
+        }
+    }
+}
+
+void run_analysis()
+{
+    FILE *fp = fopen("gcd_data.dat", "w");
+    if (!fp) {
         printf("Error opening file!\n");
-        return 1;
+        return;
     }
 
-    // header
     fprintf(fp, "#n Euclid_B Euclid_W CICM_B CICM_W Mod_B Mod_W\n");
-
-    printf("n\tEuclid(B)\tEuclid(W)\tCICM(B)\t\tCICM(W)\t\tModified(B)\tModified(W)\n");
-    printf("---------------------------------------------------------------------------------\n");
+    printf("\nn\tEuclid(B)\tEuclid(W)\tCICM(B)\tCICM(W)\tModified(B)\tModified(W)\n");
+    printf("-----------------------------------------------------------------------------\n");
 
     for (int n = 10; n <= 200; n += 10)
     {
-        int num1, num2;
+        int e_best, e_worst, c_best, c_worst, m_best, m_worst;
 
-        // Best case: numbers equal
-        num1 = n; num2 = n;
-        euclid(num1, num2);
-        int e_best = count1;
-        cicm(num1, num2);
-        int c_best = count2;
-        modified(num1, num2);
-        int m_best = count3;
+        // Best = numbers equal
+        euclid(n, n);       e_best = count1;
+        cicm(n, n);         c_best = count2;
+        modified(n, n);     m_best = count3;
 
-        // Worst case: consecutive numbers (n, n-1)
-        num1 = n; num2 = n - 1;
-        euclid(num1, num2);
-        int e_worst = count1;
-        cicm(num1, num2);
-        int c_worst = count2;
-        modified(num1, num2);
-        int m_worst = count3;
+        // Worst = consecutive numbers
+        euclid(n, n-1);     e_worst = count1;
+        cicm(n, n-1);       c_worst = count2;
+        modified(n, n-1);   m_worst = count3;
 
-        // print to terminal
         printf("%d\t%d\t\t%d\t\t%d\t\t%d\t\t%d\t\t%d\n",
                n, e_best, e_worst, c_best, c_worst, m_best, m_worst);
 
-        // save to file
         fprintf(fp, "%d %d %d %d %d %d %d\n", n, e_best, e_worst, c_best, c_worst, m_best, m_worst);
     }
 
     fclose(fp);
 
-    // ====== GNU PLOTTER ======
-    system("gnuplot -persist -e \""
-           "set title 'GCD Algorithms: Best vs Worst Case';"
-           "set xlabel 'Input size (n)';"
-           "set ylabel 'Number of Steps';"
-           "set grid;"
-           "set key outside;"
-           "set style data lines;"
-           "plot 'gcd_data.dat' using 1:2 title 'Euclid (Best)',"
-           "     'gcd_data.dat' using 1:3 title 'Euclid (Worst)',"
-           "     'gcd_data.dat' using 1:4 title 'CICM (Best)',"
-           "     'gcd_data.dat' using 1:5 title 'CICM (Worst)',"
-           "     'gcd_data.dat' using 1:6 title 'Modified (Best)',"
-           "     'gcd_data.dat' using 1:7 title 'Modified (Worst)';"
-           "set terminal png size 1000,600;"
-           "set output 'gcd_plot.png';"
-           "replot\"");
+    // ===== gnuplot script =====
+    FILE *gp = fopen("plot_gcd.gnu", "w");
+    fprintf(gp,
+        "set title \"GCD Algorithms: Best vs Worst Case\"\n"
+        "set xlabel \"Input size (n)\"\n"
+        "set ylabel \"Number of Steps\"\n"
+        "set grid\n"
+        "set key outside\n"
+        "set style data lines\n"
+        "set term qt persist\n"
+        "plot \"gcd_data.dat\" using 1:2 title \"Euclid (Best)\", \\\n"
+        "     \"gcd_data.dat\" using 1:3 title \"Euclid (Worst)\", \\\n"
+        "     \"gcd_data.dat\" using 1:4 title \"CICM (Best)\", \\\n"
+        "     \"gcd_data.dat\" using 1:5 title \"CICM (Worst)\", \\\n"
+        "     \"gcd_data.dat\" using 1:6 title \"Modified (Best)\", \\\n"
+        "     \"gcd_data.dat\" using 1:7 title \"Modified (Worst)\"\n"
+        "set term png size 1000,600\n"
+        "set output \"gcd_plot.png\"\n"
+        "replot\n"
+    );
+    fclose(gp);
 
-    printf("\n✅ Graph generated! Check 'gcd_plot.png'\n");
+    system("gnuplot plot_gcd.gnu");
+    printf("\n✅ Graph window opened and also saved as 'gcd_plot.png'\n");
+}
+
+int main()
+{
+    int mode;
+    printf("\n=== MENU ===\n");
+    printf("1. Run GCD Tester (interactive)\n");
+    printf("2. Run Analysis + Generate Graph\n");
+    printf("Choice: ");
+    scanf("%d", &mode);
+
+    if (mode == 1)
+        run_tester();
+    else if (mode == 2)
+        run_analysis();
+    else
+        printf("Invalid choice!\n");
 
     return 0;
 }
